@@ -96,12 +96,12 @@ def take_captures(center_lat, center_lon, zoom, captures, step_m, outdir, direct
         parsed = parse_center_from_url(current_url)
         if parsed:
             center_lat, center_lon, zoom = parsed
-            print(f"✅ Coordonnées détectées: lat={center_lat:.6f}, lon={center_lon:.6f}, zoom={zoom}\n")
+            print(f" Coordonnées détectées: lat={center_lat:.6f}, lon={center_lon:.6f}, zoom={zoom}\n")
         else:
-            print("⚠️  Impossible de parser l'URL, utilisation des coordonnées par défaut")
+            print("  Impossible de parser l'URL, utilisation des coordonnées par défaut")
         
         # Demander la direction
-        print("\n🧭 Choisissez la direction:")
+        print("\n Choisissez la direction:")
         print("  1. Nord (↑)")
         print("  2. Sud (↓)")
         print("  3. est (→)")
