@@ -9,27 +9,40 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 
 def build_map_url(lat, lon, zoom):
+    """Construit l'URL OpenAerialMap avec lat, lon, zoom"""
     return f"https://map.openaerialmap.org/#/{lat},{lon},{zoom}"
 
 
 def meters_to_deg(lat, meters):
-    """Convertit une distance en mètres vers degrés lat/lon"""
+    """Convertit une distance en mètres en degrés lat/lon"""
     m_per_deg_lat = 111320.0
     m_per_deg_lon = 111320.0 * math.cos(math.radians(lat))
     return meters / m_per_deg_lat, meters / (m_per_deg_lon + 1e-12)
 
 
-def linear_positions(center_lat, center_lon, step_m):
-    """Génère des positions en avançant vers l'est"""
+def linear_positions(center_lat, center_lon, step_m, direction="east"):
+    """Génère positions selon direction: east, west, north, south"""
     dlat, dlng = meters_to_deg(center_lat, step_m)
     lat, lng = center_lat, center_lon
+    
+    # Définir les déltas selon la direction
+    if direction.lower() == "north":
+        dlat, dlng = 0, dlng
+    elif direction.lower() == "south":
+        dlat, dlng = 0, -dlng
+    elif direction.lower() == "east":
+        dlat, dlng = dlat, 0
+    elif direction.lower() == "west":
+        dlat, dlng = -dlat, 0
+    
     while True:
         yield lat, lng
+        lat += dlat
         lng += dlng
 
 
 def parse_center_from_url(url):
-    """Extrait lat, lon, zoom de l'URL de la carte"""
+    """Extrait lat, lon, zoom de l'URL OpenAerialMap"""
     try:
         if '#/' in url:
             part = url.split('#/')[1].split('?')[0]
@@ -43,7 +56,8 @@ def parse_center_from_url(url):
     return None
 
 
-def take_captures(center_lat, center_lon, zoom, captures, step_m, outdir, manual=False, start_index=0, driver=None):
+def take_captures(center_lat, center_lon, zoom, captures, step_m, outdir, direction="east", manual=False, start_index=0, driver=None):
+    """Lance Selenium et capture des screenshots de la carte en se déplaçant"""
     out = Path(outdir).resolve()
     out.mkdir(parents=True, exist_ok=True)
     print(f"Enregistrement dans: {out}")
@@ -77,17 +91,29 @@ def take_captures(center_lat, center_lon, zoom, captures, step_m, outdir, manual
         
         # Lire l'URL du navigateur
         current_url = driver.current_url
-        print(f" URL détectée: {current_url[:80]}...")
+        print(f"URL détectée: {current_url[:80]}...")
         
         parsed = parse_center_from_url(current_url)
         if parsed:
             center_lat, center_lon, zoom = parsed
-            print(f" Coordonnées détectées: lat={center_lat:.6f}, lon={center_lon:.6f}, zoom={zoom}\n")
+            print(f"✅ Coordonnées détectées: lat={center_lat:.6f}, lon={center_lon:.6f}, zoom={zoom}\n")
         else:
-            print(" Impossible de parser l'URL, utilisation des coordonnées par défaut")
+            print("⚠️  Impossible de parser l'URL, utilisation des coordonnées par défaut")
+        
+        # Demander la direction
+        print("\n🧭 Choisissez la direction:")
+        print("  1. Nord (↑)")
+        print("  2. Sud (↓)")
+        print("  3. est (→)")
+        print("  4. ouest (←)")
+        dir_choice = input("Direction (1-4): ").strip()
+        
+        direction_map = {"1": "east", "2": "west", "3": "north", "4": "south"}
+        direction = direction_map.get(dir_choice, "east")
+        print(f" Direction: {direction}\n")
 
     try:
-        gen = linear_positions(center_lat, center_lon, step_m)
+        gen = linear_positions(center_lat, center_lon, step_m, direction)
         i, count = start_index, 0
         for lat, lon in gen:
             if count >= captures:
@@ -113,6 +139,7 @@ def take_captures(center_lat, center_lon, zoom, captures, step_m, outdir, manual
 
 
 def main():
+    """Gère les arguments CLI et lance les captures (--manual pour mode interactif)"""
     p = argparse.ArgumentParser()
     p.add_argument("--captures", type=int, default=10)
     p.add_argument("--step", type=float, default=30.0)
@@ -122,12 +149,13 @@ def main():
     p.add_argument("--outdir", type=str, default="captures")
     p.add_argument("--manual", action="store_true")
     p.add_argument("--start-index", type=int, default=0)
+    p.add_argument("--direction", type=str, default="east", choices=["east", "west", "north", "south"])
     args = p.parse_args()
 
     driver = None
     try:
         next_idx, driver = take_captures(args.center_lat, args.center_lon, args.zoom, args.captures, 
-                                         args.step, args.outdir, manual=args.manual, start_index=args.start_index, driver=driver)
+                                         args.step, args.outdir, direction=args.direction, manual=args.manual, start_index=args.start_index, driver=driver)
         
         if args.manual:
             while next_idx < 100:
@@ -135,7 +163,7 @@ def main():
                 if resp == 'n':
                     break
                 next_idx, driver = take_captures(args.center_lat, args.center_lon, args.zoom, min(10, 100 - next_idx),
-                                                 args.step, args.outdir, manual=True, start_index=next_idx, driver=driver)
+                                                 args.step, args.outdir, direction=args.direction, manual=True, start_index=next_idx, driver=driver)
             print(f"\nTotal: {next_idx} images.")
     finally:
         if driver:
