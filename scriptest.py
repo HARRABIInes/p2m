@@ -25,7 +25,7 @@ def linear_positions(center_lat, center_lon, step_m):
     lat, lng = center_lat, center_lon
     while True:
         yield lat, lng
-        lng += dlng
+        lat += dlat
 
 
 def parse_center_from_url(url):
