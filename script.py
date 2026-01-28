@@ -102,13 +102,18 @@ def take_captures(center_lat, center_lon, zoom, captures, step_m, outdir, direct
         
         # Demander la direction
         print("\n Choisissez la direction:")
-        print("  1. Nord (↑)")
-        print("  2. Sud (↓)")
-        print("  3. est (→)")
-        print("  4. ouest (←)")
+        print("  1. north (↑)")
+        print("  2. west (↓)")
+        print("  3. north (→)")
+        print("  4. south (←)")
         dir_choice = input("Direction (1-4): ").strip()
         
-        direction_map = {"1": "east", "2": "west", "3": "north", "4": "south"}
+        direction_map = {
+            "1": "east",
+            "2": "west",
+              "3": "north",
+            "4": "south"
+                    }
         direction = direction_map.get(dir_choice, "east")
         print(f" Direction: {direction}\n")
 
